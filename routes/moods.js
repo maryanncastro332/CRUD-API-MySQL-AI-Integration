@@ -1,56 +1,71 @@
+// routes/moods.js
 import express from "express";
 import { db } from "../db.js";
-import { getAIResponse } from "../services/aiService.js";
 
 const router = express.Router();
 
-// POST - Create Mood (With Extra Credit: Input Validation)
+// POST: add mood
 router.post("/", async (req, res) => {
-  const { user_id, mood_text } = req.body;
-
-  // EXTRA CREDIT: Reject empty mood
-  if (!mood_text || mood_text.trim() === "") {
-    return res.status(400).json({ error: "Mood text cannot be empty!" });
-  }
-
   try {
-    const [result] = await db.query(
-      "INSERT INTO mood_entries (user_id, mood_text) VALUES (?, ?)",
-      [user_id, mood_text]
+    const { full_name, mood_text } = req.body;
+
+    // Insert user
+    const [userResult] = await db.query(
+      "INSERT INTO users (full_name) VALUES (?)",
+      [full_name]
     );
+    const userId = userResult.insertId;
 
-    const aiMessage = await getAIResponse(mood_text);
+    // Insert mood entry
+    const [moodResult] = await db.query(
+      "INSERT INTO mood_entries (user_id, mood_text) VALUES (?, ?)",
+      [userId, mood_text]
+    );
+    const moodId = moodResult.insertId;
 
+    // AI Advice Logic
+    const moodLower = mood_text.toLowerCase();
+    let aiMessage = "Thank you for sharing!";
+
+    if (moodLower.includes("anxious")) {
+      aiMessage = "It is okay to feel anxious. Take deep breaths and focus on one thing at a time.";
+    } else if (moodLower.includes("sad")) {
+      aiMessage = "It is okay to feel sad. Remember, you are not alone. Talk to someone you trust.";
+    } else if (moodLower.includes("scared") || moodLower.includes("afraid")) {
+      aiMessage = "Feeling scared is natural. Take deep breaths and remind yourself you are safe.";
+    } else if (moodLower.includes("angry")) {
+      aiMessage = "It’s okay to feel angry. Try to release the tension in a healthy way, like exercise or journaling.";
+    } else if (moodLower.includes("happy") || moodLower.includes("joy")) {
+      aiMessage = "Great to hear you’re feeling happy! Keep enjoying the positive moments.";
+    }
+
+    // Save AI response
     await db.query(
       "INSERT INTO ai_responses (mood_entry_id, ai_message) VALUES (?, ?)",
-      [result.insertId, aiMessage]
+      [moodId, aiMessage]
     );
 
-    res.json({ message: "Mood saved", aiMessage });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ ai_message: aiMessage });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// GET - Read Moods
+// GET: fetch all moods + AI responses
 router.get("/", async (req, res) => {
-  const [rows] = await db.query(`
-    SELECT u.full_name, m.mood_text, a.ai_message
-    FROM users u
-    JOIN mood_entries m ON u.id = m.user_id
-    JOIN ai_responses a ON m.id = a.mood_entry_id
-  `);
-  res.json(rows);
-});
-
-// EXTRA CREDIT: DELETE Mood by ID
-router.delete("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    await db.query("DELETE FROM mood_entries WHERE id = ?", [id]);
-    res.json({ message: `Entry ${id} deleted successfully` });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const [rows] = await db.query(`
+      SELECT u.full_name, m.mood_text, a.ai_message, m.created_at
+      FROM users u
+      JOIN mood_entries m ON u.id = m.user_id
+      JOIN ai_responses a ON m.id = a.mood_entry_id
+      ORDER BY m.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

@@ -14,8 +14,16 @@
   "dependencies": {
     "axios": "^1.13.4",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.4",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "mysql2": "^3.16.3"
-  }
+    "mysql2": "^3.17.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maryanncastro332/CRUD-API-MySQL-AI-Integration.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maryanncastro332/CRUD-API-MySQL-AI-Integration/issues"
+  },
+  "homepage": "https://github.com/maryanncastro332/CRUD-API-MySQL-AI-Integration#readme"
 }
